@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mini Blockchain DApp</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='2' y='9' width='12' height='14' rx='3' fill='%234f6bed'/><rect x='18' y='9' width='12' height='14' rx='3' fill='%235fd3a0'/><rect x='13' y='14' width='6' height='4' fill='%2394a3b8'/></svg>" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo" aria-hidden="true"><i></i><i></i></span>
+        <div>
+          <h1>Mini Blockchain</h1>
+          <p class="muted">Contrato inteligente na rede local do Hardhat</p>
+        </div>
+      </div>
+
+      <div class="account-pick">
+        <label for="accountSelect">Conta ativa</label>
+        <select id="accountSelect" disabled></select>
+        <span class="account-balance">Saldo: <strong id="balance">-</strong></span>
+      </div>
+
+      <div class="connection">
+        <span id="netBadge" class="badge" role="status">Desconectado</span>
+        <div class="seg" role="group" aria-label="Forma de conexão">
+          <button id="btnRpc" type="button">Hardhat local</button>
+          <button id="btnMetaMask" type="button">MetaMask</button>
+        </div>
+      </div>
+    </header>
+
+    <div id="banner" class="banner" role="alert" hidden></div>
+
+    <main id="conteudo" tabindex="-1">
+      <section class="stats" aria-label="Estado do contrato">
+        <div class="stat">
+          <span class="stat-label">Blocos na cadeia</span>
+          <span id="statTotal" class="stat-value">-</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Dificuldade</span>
+          <span id="statDifficulty" class="stat-value">-</span>
+          <span id="statDifficultyHint" class="stat-sub"></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Integridade da cadeia</span>
+          <span id="statValid" class="stat-value">-</span>
+          <span id="statValidReason" class="stat-sub"></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Último hash</span>
+          <code id="statLastHash" class="stat-hash">-</code>
+        </div>
+      </section>
+
+      <section class="card chain-card" aria-labelledby="chainTitle">
+        <div class="card-head">
+          <div>
+            <h2 id="chainTitle">Cadeia de blocos</h2>
+            <p class="muted">Cada bloco guarda o hash do anterior. Use "Simular adulteração" para repetir o Demo 2 da fase 1: a edição acontece só na tela.</p>
+          </div>
+          <button id="btnRefresh" type="button" class="ghost" disabled>Atualizar</button>
+        </div>
+        <div id="tamperReport" class="tamper-report" role="status" hidden></div>
+        <ol id="chain" class="chain" aria-label="Blocos da cadeia, do gênese ao mais recente"></ol>
+      </section>
+
+      <div class="columns">
+        <section class="card primary-card" aria-labelledby="txFormTitle">
+          <h2 id="txFormTitle">Nova transação</h2>
+          <p class="muted">O navegador minera o bloco (prova de trabalho) e envia o nonce para <code>addBlock()</code>. O contrato só confere se o hash começa com os zeros exigidos.</p>
+          <form id="txForm" class="form">
+            <div class="row">
+              <div class="field"><label for="fDe">De</label><input id="fDe" required maxlength="40" value="Alice" autocomplete="off" /></div>
+              <div class="field"><label for="fPara">Para</label><input id="fPara" required maxlength="40" value="Bob" autocomplete="off" /></div>
+              <div class="field small"><label for="fValor">Valor</label><input id="fValor" type="number" required min="0" step="any" value="10" /></div>
+            </div>
+            <label class="check"><input id="fSkipPow" type="checkbox" /> Enviar sem minerar (para ver o contrato rejeitar)</label>
+            <div class="actions">
+              <button id="btnSend" class="primary big" type="submit" disabled>Minerar e enviar</button>
+              <button id="btnCancel" type="button" hidden>Cancelar mineração</button>
+            </div>
+          </form>
+
+          <div id="miningBox" class="mining" role="status" aria-live="polite" hidden>
+            <div class="mining-head"><span class="spinner" aria-hidden="true"></span><strong id="miningTitle">Minerando…</strong></div>
+            <div class="progress" aria-hidden="true"><span id="miningBar"></span></div>
+            <dl class="kv compact">
+              <div><dt>Tentativas</dt><dd id="miningTries">0</dd></div>
+              <div><dt>Velocidade</dt><dd id="miningRate">-</dd></div>
+              <div><dt>Nonce</dt><dd id="miningNonce">-</dd></div>
+            </dl>
+            <code id="miningHash" class="hash-line"></code>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="txListTitle">
+          <h2 id="txListTitle">Transações</h2>
+          <p class="muted" id="txEmpty">Nenhuma transação enviada nesta sessão. Os estados aparecem aqui: minerando, aguardando assinatura, pendente e confirmada ou falhou.</p>
+          <ol id="txList" class="txlist"></ol>
+        </section>
+      </div>
+
+      <details class="card settings">
+        <summary><h2>Configurações e dados do contrato</h2><span class="muted">dificuldade, endereço, conta</span></summary>
+        <div class="settings-body">
+          <section aria-labelledby="diffTitle">
+            <h3 id="diffTitle">Dificuldade da mineração</h3>
+            <p class="muted">Só o dono do contrato (conta #0, que fez o deploy) pode chamar <code>setDifficulty()</code>. Cada zero a mais multiplica o trabalho por 16.</p>
+            <form id="diffForm" class="form inline">
+              <div class="field small">
+                <label for="fDifficulty">Zeros hexadecimais</label>
+                <input id="fDifficulty" type="number" min="0" max="6" required />
+              </div>
+              <button id="btnDifficulty" type="submit" disabled>Alterar</button>
+            </form>
+            <p id="diffHint" class="hint"></p>
+          </section>
+          <section aria-labelledby="infoTitle">
+            <h3 id="infoTitle">Rede e contrato</h3>
+            <dl class="kv stacked">
+              <div><dt>Contrato</dt><dd><code id="contractAddr">-</code></dd></div>
+              <div><dt>Bloco Ethereum atual</dt><dd id="ethBlock">-</dd></div>
+              <div><dt>Conta</dt><dd id="accountHint" class="hint"></dd></div>
+            </dl>
+          </section>
+        </div>
+      </details>
+    </main>
+
+    <div id="toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
+
+    <footer class="muted">Rede local Hardhat · chainId 31337 · RPC http://127.0.0.1:8545</footer>
+
+    <script src="vendor/ethers.umd.min.js"></script>
+    <script src="pow.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
